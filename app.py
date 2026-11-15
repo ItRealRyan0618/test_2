@@ -1,18 +1,41 @@
 # -*- coding: utf-8 -*-
-"""红白机游戏厅 - Flask + SQLite 后端"""
+"""红白机游戏厅 - Flask + SQLite 后端（部署适配版）
+
+线上启动：gunicorn app:app（端口由平台分配）
+本地调试：flask --app app run --host 0.0.0.0 --port 7151
+"""
 import os
 import sqlite3
 import secrets
 from datetime import datetime
+from pathlib import Path
 
 from flask import Flask, request, jsonify, session, send_from_directory, g
 from werkzeug.security import generate_password_hash, check_password_hash
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "game.db")
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = Path(os.environ.get("DATA_DIR", BASE_DIR / "data"))
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+DB_PATH = DATA_DIR / "game.db"
 
 app = Flask(__name__, static_folder="static", static_url_path="/static")
-app.secret_key = secrets.token_hex(32)
+app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
+
+
+@app.after_request
+def no_cache(resp):
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
+
+
+def migrate_legacy():
+    """把旧版本放在代码目录的数据库迁移到 DATA_DIR。"""
+    legacy = BASE_DIR / "game.db"
+    if legacy.exists() and not DB_PATH.exists():
+        DB_PATH.write_bytes(legacy.read_bytes())
 
 
 # ---------- 数据库 ----------
@@ -53,20 +76,14 @@ def init_db():
     db.close()
 
 
-def current_user():
-    uid = session.get("user_id")
-    if not uid:
-        return None
-    row = get_db().execute("SELECT id, username FROM users WHERE id=?", (uid,)).fetchone()
-    return dict(row) if row else None
+migrate_legacy()
+init_db()
 
 
-@app.after_request
-def no_cache(resp):
-    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-    resp.headers["Pragma"] = "no-cache"
-    resp.headers["Expires"] = "0"
-    return resp
+# ---------- 健康检查 ----------
+@app.get("/healthz")
+def healthz():
+    return "ok", 200
 
 
 # ---------- 页面 ----------
@@ -118,15 +135,19 @@ def logout():
 
 @app.route("/api/me")
 def me():
-    user = current_user()
+    uid = session.get("user_id")
+    user = None
+    if uid:
+        row = get_db().execute("SELECT id, username FROM users WHERE id=?", (uid,)).fetchone()
+        user = dict(row) if row else None
     return jsonify(ok=True, user=user)
 
 
 # ---------- 分数 API ----------
 @app.route("/api/score", methods=["POST"])
 def submit_score():
-    user = current_user()
-    if not user:
+    uid = session.get("user_id")
+    if not uid:
         return jsonify(ok=False, msg="请先登录"), 401
     data = request.get_json(force=True, silent=True) or {}
     game = str(data.get("game") or "snake")[:20]
@@ -139,12 +160,12 @@ def submit_score():
     db = get_db()
     db.execute(
         "INSERT INTO scores(user_id, game, score, created_at) VALUES(?,?,?,?)",
-        (user["id"], game, score, datetime.now().isoformat()),
+        (uid, game, score, datetime.now().isoformat()),
     )
     db.commit()
     best = db.execute(
         "SELECT MAX(score) AS m FROM scores WHERE user_id=? AND game=?",
-        (user["id"], game),
+        (uid, game),
     ).fetchone()["m"]
     return jsonify(ok=True, best=best)
 
@@ -162,8 +183,3 @@ def leaderboard():
         LIMIT 10
     """, (game,)).fetchall()
     return jsonify(ok=True, list=[dict(r) for r in rows])
-
-
-if __name__ == "__main__":
-    init_db()
-    app.run(host="0.0.0.0", port=7151, debug=False)

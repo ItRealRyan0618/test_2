@@ -1,5 +1,11 @@
-# 数据库与缓存
+# 数据库与运行时数据
 game.db
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Python 缓存
 __pycache__/
 *.pyc
 
