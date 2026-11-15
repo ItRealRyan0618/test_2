@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>红白机游戏厅</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="scanlines"></div>
+
+<header class="topbar">
+  <div class="logo">🕹️ 红白机游戏厅</div>
+  <div id="user-area">
+    <div id="auth-forms">
+      <input id="auth-username" placeholder="用户名" maxlength="20" autocomplete="username">
+      <input id="auth-password" type="password" placeholder="密码" maxlength="64" autocomplete="current-password">
+      <button class="btn" onclick="doLogin()">登录</button>
+      <button class="btn" onclick="doRegister()">注册</button>
+    </div>
+    <div id="user-info" style="display:none">
+      <span id="hello-user"></span>
+      <span id="my-best"></span>
+      <button class="btn small" onclick="doLogout()">退出</button>
+    </div>
+  </div>
+</header>
+<div id="auth-msg"></div>
+
+<main class="cabinet">
+  <!-- 游戏卡带选择 -->
+  <aside class="side-panel left">
+    <h2>📼 选择卡带</h2>
+    <div id="game-cards"></div>
+  </aside>
+
+  <!-- 屏幕 -->
+  <section class="screen-wrap">
+    <div class="marquee" id="marquee">★ FAMILY GAME CONSOLE ★</div>
+    <div class="screen">
+      <canvas id="game" width="480" height="480"></canvas>
+      <div id="overlay" class="overlay">
+        <div id="overlay-text">SELECT GAME</div>
+        <div class="blink-hint" id="overlay-hint">← 选择一款游戏</div>
+      </div>
+    </div>
+    <div class="hud">
+      <span>SCORE <b id="hud-score">0</b></span>
+      <span>BEST <b id="hud-best">0</b></span>
+      <span id="hud-extra"></span>
+    </div>
+  </section>
+
+  <!-- 排行榜 + 操作说明 -->
+  <aside class="side-panel">
+    <h2>🏆 排行榜 TOP 10</h2>
+    <div id="board-title" class="board-title"></div>
+    <table class="board">
+      <thead><tr><th>#</th><th>玩家</th><th>最高分</th><th>场次</th></tr></thead>
+      <tbody id="board-body"><tr><td colspan="4" class="dim">加载中…</td></tr></tbody>
+    </table>
+    <div class="help">
+      <h3 id="help-title">操作说明</h3>
+      <div id="help-body"></div>
+    </div>
+  </aside>
+</main>
+
+<footer class="footer">© 2026 FAMILY GAME CONSOLE · FLASK + SQLITE</footer>
+
+<script src="/static/common.js"></script>
+<script src="/static/games/snake.js"></script>
+<script src="/static/games/tetris.js"></script>
+<script src="/static/games/breakout.js"></script>
+<script src="/static/games/invaders.js"></script>
+<script>
+window.addEventListener('load', () => hub.boot());
+</script>
+</body>
+</html>

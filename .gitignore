@@ -1,0 +1,12 @@
+# 数据库与缓存
+game.db
+__pycache__/
+*.pyc
+
+# 虚拟环境
+.venv/
+venv/
+
+# 系统文件
+Thumbs.db
+.DS_Store
